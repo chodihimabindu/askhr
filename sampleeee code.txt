@@ -1,0 +1,161 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Change_Approval_Status_to_Approved_or_Rejected;
+
+using System;
+using System.Collections.Generic;
+
+using System.Linq;
+using System.Text;
+
+using System.Threading.Tasks;
+using Moq; 
+ 
+namespace Change_Approval_Status_to_Approved_or_Rejected.Tests
+
+{
+   
+ using Microsoft.Xrm.Sdk;
+   
+ using Microsoft.Crm.Sdk.Messages;
+   
+ using Microsoft.Xrm.Sdk.Query;
+
+  [TestClass()]
+   
+ public class ChangeApprovalStatusTests
+   
+ {
+  [TestMethod()]
+       
+ public void ExecuteTest()
+  {
+            
+var serviceMock = new Mock<IOrganizationService>();
+            
+var factoryMock = new Mock<IOrganizationServiceFactory>();
+           
+ var tracingServiceMock = new Mock<ITracingService>();
+           
+ var notificationServiceMock = new Mock<IServiceEndpointNotificationService>();
+         
+   var pluginContextMock = new Mock<IPluginExecutionContext>();
+          
+  var serviceProviderMock = new Mock<IServiceProvider>();
+
+  Entity actualEntity = new Entity();
+            
+//serviceMock.Setup(t => t.Create(It.IsAny<Entity>()));
+
+ 
+
+            
+           
+ Guid userId = new Guid("EFFD5189-95FB-E711-810D-FC15B4281C08");
+          
+  Guid currentUserid = new Guid("EFFD5189-95FB-E711-810D-FC15B4281C08");
+            
+var approvalGuid = Guid.NewGuid();
+           
+ var regardingid = new Guid("F6147300-4C04-EA11-A9AB-000D3A18CEC8");
+
+
+   Entity CaseUpdate = GenerateCaseEntity((regardingid));
+// serviceMock.Setup(s => s.Retrieve("relonl6_internalapproval", approvalGuid, new Microsoft.Xrm.Sdk.Query.ColumnSet("relonl6_approvalstatus", 
+"relonl6_statuschangeddate", "ownerid", "regardingobjectid", "relonl6_actualapprover"))) 
+   serviceMock.Setup(s => s.Retrieve("relonl6_internalapproval", approvalGuid, It.IsAny<ColumnSet>())) .Returns(intervalApproval);
+  //serviceMock.Setup(s => s.Retrieve(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<ColumnSet>()))
+ //  .Returns("incident");
+ serviceMock.Setup(s => s.Retrieve("incident", regardingid, It.IsAny<ColumnSet>())) .Returns(CaseUpdate);
+ //serviceMock.Setup(s => s.Retrieve(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<ColumnSet>()))
+//  .Returns(new Entity("relonl6_internalapproval") { regardingobjectid = new EntityReference("F6147300-4C04-EA11-A9AB-000D3A18CEC8")});
+ IOrganizationService service = serviceMock.Object;
+factoryMock.Setup(t => t.CreateOrganizationService(It.IsAny<Guid>())).Returns(service);
+ var factory = factoryMock.Object;
+ tracingServiceMock.Setup(t => t.Trace(It.IsAny<string>(), It.IsAny<object[]>())).Callback<string, object[]>((t1, t2) => Console.WriteLine(t1, t2));
+  var tracingService = tracingServiceMock.Object;
+ ParameterCollection inputParameters = new ParameterCollection();
+      
+      inputParameters.Add("Target", GenerateApprovalEntity(approvalGuid));
+         
+   pluginContextMock.Setup(t => t.InputParameters).Returns(inputParameters);
+       
+     pluginContextMock.Setup(t => t.UserId).Returns(userId);
+           
+ pluginContextMock.Setup(t => t.InitiatingUserId).Returns(currentUserid);
+          
+  //pluginContextMock.Setup(t => t.).Returns(currentUserid);
+
+            var pluginContext = pluginContextMock.Object;
+
+ 
+
+           
+ serviceProviderMock.Setup(t => t.GetService(It.Is<Type>(i => i == typeof(ITracingService)))).Returns(tracingService);
+           
+ serviceProviderMock.Setup(t => t.GetService(It.Is<Type>(i => i == typeof(IOrganizationServiceFactory)))).Returns(factory);
+         
+   serviceProviderMock.Setup(t => t.GetService(It.Is<Type>(i => i == typeof(IPluginExecutionContext)))).Returns(pluginContext);
+           
+ var serviceProvider = serviceProviderMock.Object;
+ ChangeApprovalStatus approvalobj = new ChangeApprovalStatus();
+   approvalobj.Execute(serviceProvider);
+     
+   }
+ public Entity GenerateCaseEntity(Guid CaseRecordId) {
+           
+ Entity CaseEntity = new Entity("incident") { Id = CaseRecordId };
+           
+ CaseEntity.Attributes.Add("new_statusreason", new OptionSetValue(100000001));
+      
+ CaseEntity.Attributes.Add("ownerid", new EntityReference("incident", new Guid("D121042C-836C-E711-80FD-FC15B4281C08")));
+    
+ CaseEntity.Attributes.Add("new_currentqueue", new EntityReference("incident", new Guid("0EE0DC8E-836C-E711-80FC-FC15B428AA3C")));
+
+ 
+
+        
+ return CaseEntity;
+   }
+        public Entity GenerateApprovalEntity(Guid approvalID) {
+          
+  Entity approvalEntity = new Entity("relonl6_internalapproval") { Id = approvalID };
+          
+  approvalEntity.Attributes.Add("relonl6_approverejects", new OptionSetValue(0));
+           
+ approvalEntity.Attributes.Add("relonl6_approvalstatus", new OptionSetValue(0));
+      
+      approvalEntity.Attributes.Add("relonl6_statuschangeddate", DateTime.Now);
+           
+ approvalEntity.Attributes.Add("ownerid", new EntityReference("team", new Guid("D121042C-836C-E711-80FD-FC15B4281C08")));
+   
+ approvalEntity.Attributes.Add("regardingobjectid", new EntityReference("incident", new Guid("F6147300-4C04-EA11-A9AB-000D3A18CEC8")));
+           
+ approvalEntity.Attributes.Add("relonl6_actualapprover", new OptionSetValue(0));
+    return approvalEntity;
+      
+  }
+    
+   
+ }
+   
+ 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
