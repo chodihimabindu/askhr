@@ -1,0 +1,179 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using AskHRCRM.Plugin.PhoneCallPlugIn;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Moq;
+using Microsoft.Xrm.Sdk.Query;
+using Microsoft.Xrm.Sdk;
+
+namespace AskHRCRM.Plugin.PhoneCallPlugIn.Tests
+{
+    [TestClass()]
+    public class PhoneCallPlugInTests
+    {
+        [TestMethod()]
+        public void PhoneCallPlugInTest()
+        {
+
+
+
+            // Assert.Fail();
+            var serviceMock = new Mock<IOrganizationService>();
+            var factoryMock = new Mock<IOrganizationServiceFactory>();
+            var tracingServiceMock = new Mock<ITracingService>();
+            var notificationServiceMock = new Mock<IServiceEndpointNotificationService>();
+            var pluginContextMock = new Mock<IPluginExecutionContext>();
+            var serviceProviderMock = new Mock<IServiceProvider>();
+
+            Entity actualEntity = new Entity();
+            //serviceMock.Setup(t => t.Create(It.IsAny<Entity>()));
+
+            Guid userId = new Guid("EFFD5189-95FB-E711-810D-FC15B4281C08");
+            Guid currentUserid = new Guid("EFFD5189-95FB-E711-810D-FC15B4281C08");
+            var phoneCallId = Guid.NewGuid();//new Guid("661AEEF4-2F05-EA11-A991-000D3A15A153");//Guid.NewGuid();
+                                             //mocksetup
+
+            // serviceMock.Setup(s => s.Retrieve("relonl6_internalapproval", approvalGuid, new Microsoft.Xrm.Sdk.Query.ColumnSet("relonl6_approvalstatus", "relonl6_statuschangeddate", "ownerid", "regardingobjectid", "relonl6_actualapprover")))
+            serviceMock.Setup(s => s.Retrieve(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<ColumnSet>()))
+                .Returns(PhoneCallEntity(phoneCallId));
+            //serviceMock.Setup(s => s.RetrieveMultiple(It.IsAny<FetchExpression>())).Returns(countOfRecord);
+            // serviceMock.Setup(t => t.RetrieveMultiple(It.IsAny<FetchExpression>())).Returns(((Retrieveactivitypointer(IncidentEntity))));
+            serviceMock.Setup(t => t.RetrieveMultiple(It.IsAny<FetchExpression>())).Returns(RetrieveActivityEntity());
+
+
+
+            IOrganizationService service = serviceMock.Object;
+            factoryMock.Setup(t => t.CreateOrganizationService(It.IsAny<Guid>())).Returns(service);
+            var factory = factoryMock.Object;
+            tracingServiceMock.Setup(t => t.Trace(It.IsAny<string>(), It.IsAny<object[]>())).Callback<string, object[]>((t1, t2) => Console.WriteLine(t1, t2));
+            var tracingService = tracingServiceMock.Object;
+
+            Guid regardingid = Guid.NewGuid();
+
+            Entity CaseUpdate = IncidentEntity(regardingid);
+            serviceMock.Setup(s => s.Retrieve("incident", regardingid, It.IsAny<ColumnSet>())).Returns(CaseUpdate);
+            EntityImageCollection imageCollection = new EntityImageCollection();
+            imageCollection.Add("PreImage", PhoneCallEntity(phoneCallId));
+
+            int countOfRecord = 0;
+
+            ParameterCollection inputParameters = new ParameterCollection();
+            inputParameters.Add("Target", PhoneCallEntity(phoneCallId));
+            inputParameters.Add("PreEntityImages", PhoneCallEntity(phoneCallId));
+            inputParameters.Add("countOfRecord", countOfRecord);
+            pluginContextMock.Setup(t => t.InputParameters).Returns(inputParameters);
+            pluginContextMock.Setup(t => t.UserId).Returns(userId);
+            pluginContextMock.Setup(t => t.InitiatingUserId).Returns(currentUserid);
+            pluginContextMock.Setup(x => x.PreEntityImages).Returns(imageCollection);
+            pluginContextMock.Setup(x => x.MessageName).Returns("SETSTATEDYNAMICENTITY");
+            pluginContextMock.Setup(x => x.PrimaryEntityName).Returns("phonecall");
+            //pluginContextMock.Setup(x => x.countOfRecord).Returns(countOfRecord);
+            var pluginContext = pluginContextMock.Object;
+
+
+            serviceProviderMock.Setup(t => t.GetService(It.Is<Type>(i => i == typeof(ITracingService)))).Returns(tracingService);
+            serviceProviderMock.Setup(t => t.GetService(It.Is<Type>(i => i == typeof(IOrganizationServiceFactory)))).Returns(factory);
+            serviceProviderMock.Setup(t => t.GetService(It.Is<Type>(i => i == typeof(IPluginExecutionContext)))).Returns(pluginContext);
+            var serviceProvider = serviceProviderMock.Object;
+
+            string unSecure = @"<Settings>" +
+                              "<setting name='TraceEnabled'>" +
+                                "<value>true</value>" +
+                              "</setting>" +
+                            "<setting name='ReactivateTemplateID'>" +
+                                "<value>EFFD5189-95FB-E711-810D-FC15B4281C08</value>" +
+                              "</setting>" +
+                            "<setting name='RequestClosureTemplateID'>" +
+                                "<value>EFFD5189-95FB-E711-810D-FC15B4281C08</value>" +
+                              "</setting>" +
+                            "<setting name='RequestUpdateTemplateID'>" +
+                                "<value>EFFD5189-95FB-E711-810D-FC15B4281C08</value>" +
+                              "</setting>" +
+                            "</Settings>";
+            string secure = "abc";
+
+            PhoneCallPlugIn phoneCall = new PhoneCallPlugIn(unSecure, secure);
+
+            phoneCall.Execute(serviceProvider);
+        }
+        public Entity PhoneCallEntity(Guid approvalID)
+        {
+            Entity phonecallEntity = new Entity("phonecall") { Id = approvalID };
+            phonecallEntity.Attributes.Add("statecode", new OptionSetValue(0));
+            phonecallEntity.Attributes.Add("directioncode", true);
+            phonecallEntity.Attributes.Add("release8_iscloned", true);
+            phonecallEntity.Attributes.Add("regardingobjectid", new EntityReference("incident", new Guid("D8778E585B65E811810BC4346BDC7121")));
+            phonecallEntity.Attributes.Add("scrum4_response", new OptionSetValue(1));
+            // phonecallEntity.Attributes.Add("scrum4_response", new OptionSetValue(2));
+
+            // approvalEntity.Attributes.Add("relonl6_actualapprover", new Guid("C4D4193776234DC590F30C4491EA8A20"));
+            return phonecallEntity;
+        }
+        public Entity IncidentEntity(Guid regardingid)
+        {
+            Entity incidentEntity = new Entity("incident") { Id = regardingid };
+            incidentEntity.Attributes.Add("new_assignedto", new OptionSetValue(1));
+            incidentEntity.Attributes.Add("new_casephonetier", new OptionSetValue(1));
+
+            return incidentEntity;
+        }
+        public EntityCollection RetrieveActivityEntity()
+
+        {
+            EntityCollection entityCollection = new EntityCollection();
+            //"scrum5_workedby", "ownerid", "new_currentqueue"
+            Entity ActivityEntity = new Entity("activitypointer") { Id = Guid.NewGuid() };
+            ActivityEntity.Attributes.Add("rel12_subscribedforcustomeralerts", true);
+            ActivityEntity.Attributes.Add("activityid", new EntityReference("activitypointer", Guid.NewGuid()));
+            ActivityEntity.Attributes.Add("activitytypecode", new OptionSetValue(0));
+            ActivityEntity.Attributes.Add("regardingobjectid", new EntityReference("activitypointer", Guid.NewGuid()));
+            ActivityEntity.Attributes.Add("isworkflowcreated", false);
+            entityCollection.Entities.Add(ActivityEntity);
+            return entityCollection;
+        }
+
+        public Entity PhoneCallEntity1(Guid approvalID)
+        {
+            Entity phonecallEntity = new Entity("phonecall") { Id = approvalID };
+            phonecallEntity.Attributes.Add("statecode", new OptionSetValue(0));
+            phonecallEntity.Attributes.Add("directioncode", true);
+            phonecallEntity.Attributes.Add("release8_iscloned", true);
+            phonecallEntity.Attributes.Add("regardingobjectid", new EntityReference("incident", new Guid("D8778E585B65E811810BC4346BDC7121")));
+            phonecallEntity.Attributes.Add("scrum4_response", new OptionSetValue(1));
+            phonecallEntity.Attributes.Add("scrum4_response", new OptionSetValue(2));
+            return phonecallEntity;
+        }
+    
+   [TestMethod()]
+            public void ExecuteTest()
+            {
+                //Assert.Fail();
+            }
+
+            [TestMethod()]
+            public void ConvertToDoubleTest()
+            {
+                //Assert.Fail();
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
